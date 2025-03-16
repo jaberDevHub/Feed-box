@@ -1,0 +1,176 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Feed</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        /* Smooth scrolling for the feed */
+        html {
+            scroll-behavior: smooth;
+        }
+        /* Custom styles for post hover effects */
+        .post {
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+        .post:hover {
+            transform: scale(1.05);
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5);
+        }
+    </style>
+    <script>
+        function likePost(id) {
+            const likedPosts = JSON.parse(localStorage.getItem('likedPosts')) || [];
+            let likeCount = document.getElementById(`like-count-${id}`);
+            let currentLikes = parseInt(likeCount.innerText);
+            const likeButton = document.getElementById(`like-button-${id}`);
+
+            if (likedPosts.includes(id)) {
+                // If already liked, remove the like
+                likedPosts.splice(likedPosts.indexOf(id), 1);
+                likeCount.innerText = currentLikes - 1;
+                likeButton.classList.remove('text-blue-400');
+                likeButton.classList.add('text-gray-400');
+            } else {
+                // If not liked, add the like
+                likedPosts.push(id);
+                likeCount.innerText = currentLikes + 1;
+                likeButton.classList.add('text-blue-400');
+                likeButton.classList.remove('text-gray-400');
+            }
+
+            localStorage.setItem('likedPosts', JSON.stringify(likedPosts));
+        }
+
+        function getRandomStyle() {
+            const styles = [
+                "bg-gray-700",
+                "bg-blue-700",
+                "bg-green-700",
+                "bg-red-700",
+                "bg-purple-700",
+                "bg-yellow-700"
+            ];
+            return styles[Math.floor(Math.random() * styles.length)];
+        }
+
+        function getRandomName() {
+            const names = [
+                "Guest1", "Guest2", "Guest3", "Guest4", "Guest5",
+                "Anonymous", "User   123", "Visitor", "Explorer", "Adventurer"
+            ];
+            return names[Math.floor(Math.random() * names.length)];
+        }
+
+        function savePost(content, imageUrl) {
+            const posts = JSON.parse(localStorage.getItem('posts')) || [];
+            const newPost = {
+                id: posts.length + 1,
+                name: getRandomName(),
+                content: content,
+                imageUrl: imageUrl
+            };
+
+            // Check if the post already exists
+            const exists = posts.some(post => post.content === newPost.content && post.imageUrl === newPost.imageUrl);
+            if (!exists) {
+                // Add the new post to the beginning of the array
+                posts.unshift(newPost);
+                localStorage.setItem('posts', JSON.stringify(posts));
+                loadPosts();
+            } else {
+                alert("This post already exists!");
+            }
+        }
+
+        function loadPosts() {
+            const posts = JSON.parse(localStorage.getItem('posts')) || [];
+            const likedPosts = JSON.parse(localStorage.getItem('likedPosts')) || [];
+            const feedContainer = document.getElementById('feed-container');
+            feedContainer.innerHTML = ''; // Clear existing posts
+            posts.forEach(post => {
+                const uniqueStyle = getRandomStyle();
+                const isLiked = likedPosts.includes(post.id);
+                feedContainer.innerHTML += `
+                    <div class="mb-4 p-4 ${uniqueStyle} rounded-lg shadow post">
+                        <h2 class="font-semibold">${post.name}</h2>
+                        <p class="text-gray-300">${post.content}</p>
+                        <img src="${post.imageUrl}" alt="Post image" class="mt-2 rounded-lg" />
+                        <button id="like-button-${post.id}" onclick="likePost(${post.id})" class="mt-2 ${isLiked ? 'text-blue-400' : 'text-gray-400'}">❤️ Like</button>
+ <span id="like-count-${post.id}" class="ml-2">${isLiked ? 1 : 0}</span>
+                    </div>
+                `;
+            });
+        }
+
+        function handleGuestPost() {
+            const content = document.getElementById('post-content').value;
+            const imageUrl = document.getElementById('post-image-url').value || "https://via.placeholder.com/300"; // Default image if none provided
+            if (content) {
+                savePost(content, imageUrl);
+                document.getElementById('post-content').value = ''; // Clear input
+                document.getElementById('post-image-url').value = ''; // Clear image URL input
+            } else {
+                alert("Please enter some content for your post.");
+            }
+        }
+
+        function initializePosts() {
+            const initialPosts = [
+                { name: "Alice", content: "Just had a great lunch!", imageUrl: "https://via.placeholder.com/300" },
+                { name: "Bob", content: "Loving the new features!", imageUrl: "https://via.placeholder.com/300" },
+                { name: "Charlie", content: "Can't wait for the weekend!", imageUrl: "https://via.placeholder.com/300" },
+                { name: "Diana", content: "This platform is amazing!", imageUrl: "https://via.placeholder.com/300" },
+                { name: "Ethan", content: "Just finished a great book!", imageUrl: "https://via.placeholder.com/300" },
+                { name: "Fiona", content: "Exploring new places!", imageUrl: "https://via.placeholder.com/300" },
+                { name: "George", content: "Had a productive day at work!", imageUrl: "https://via.placeholder.com/300" },
+                { name: "Hannah", content: "Enjoying the beautiful weather!", imageUrl: "https://via.placeholder.com/300" },
+                { name: "Ian", content: "Just got back from a trip!", imageUrl: "https://via.placeholder.com/300" },
+                { name: "Julia", content: "Excited for the upcoming event!", imageUrl: "https://via.placeholder.com/300" },
+                { name: "Kevin", content: "Trying out a new recipe!", imageUrl: "https://via.placeholder.com/300" },
+                { name: "Laura", content: "Just finished a workout!", imageUrl: "https://via.placeholder.com/300" },
+                { name: "Mike", content: "Looking forward to the holidays!", imageUrl: "https://via.placeholder.com/300" },
+                { name: "Nina", content: "Just adopted a puppy!", imageUrl: "https://via.placeholder.com/300" },
+                { name: "Oscar", content: "Working on a new project!", imageUrl: "https://via.placeholder.com/300" }
+            ];
+            const posts = JSON.parse(localStorage.getItem('posts')) || [];
+            initialPosts.forEach(post => {
+                // Check if the post already exists
+                const exists = posts.some(existingPost => existingPost.content === post.content && existingPost.imageUrl === post.imageUrl);
+                if (!exists) {
+                    posts.push({
+                        id: posts.length + 1,
+                        name: post.name,
+                        content: post.content,
+                        imageUrl: post.imageUrl
+                    });
+                }
+            });
+            localStorage.setItem('posts', JSON.stringify(posts));
+        }
+
+        window.onload = function() {
+            initializePosts();
+            loadPosts(); // Load posts on page load
+        };
+    </script>
+</head>
+<body class="bg-gray-900 text-white flex justify-center items-center min-h-screen">
+    <div class="w-1/2 max-w-lg bg-gray-800 rounded-lg shadow-lg overflow-hidden ">
+        <!-- Navbar -->
+        <nav class="w-full bg-gray-700 p-4 text-center text-xl font-bold">Feed</nav>
+
+        <!-- Guest Post Form -->
+        <div class="p-4">
+            <h2 class="text-lg font-semibold">Post as Guest</h2>
+            <textarea id="post-content" class="w-full p-2 mt-2 bg-gray-700 rounded" placeholder="What's on your mind?" rows="3"></textarea>
+            <input id="post-image-url" type="text" class="w-full p-2 mt-2 bg-gray-700 rounded" placeholder="Image URL (optional)" />
+            <button onclick="handleGuestPost()" class="mt-2 w-full bg-blue-600 p-2 rounded">Post as Guest</button>
+        </div>
+
+        <!-- Feed Container -->
+        <div id="feed-container" class="p-4"></div>
+    </div>
+</body>
+</html>

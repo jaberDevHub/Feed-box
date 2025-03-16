@@ -18,8 +18,49 @@
             transform: scale(1.05);
             box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5);
         }
+        /* Background particles */
+        body {
+            overflow: hidden;
+            position: relative;
+            background: #1a202c; /* Dark background */
+        }
+        .particle {
+            position: absolute;
+            border-radius: 50%;
+            background: rgba(255, 255, 255, 0.8);
+            animation: float 6s infinite ease-in-out;
+        }
+        @keyframes float {
+            0% { transform: translateY(0); }
+            50% { transform: translateY(-20px); }
+            100% { transform: translateY(0); }
+        }
+        /* Feed container */
+        #feed-container {
+            max-height: 60vh; /* Set a max height for scrolling */
+            overflow-y: auto; /* Enable vertical scrolling */
+        }
     </style>
     <script>
+        // Function to create floating particles
+        function createParticles() {
+            const numParticles = 30; // Number of particles
+            const body = document.body;
+
+            for (let i = 0; i < numParticles; i++) {
+                const particle = document.createElement('div');
+                particle.className = 'particle';
+                const size = Math.random() * 10 + 5; // Random size between 5 and 15
+                particle.style.width = `${size}px`;
+                particle.style.height = `${size}px`;
+                particle.style.left = `${Math.random() * 100}vw`; // Random horizontal position
+                particle.style.top = `${Math.random() * 100}vh`; // Random vertical position
+                particle.style.opacity = Math.random(); // Random opacity
+                particle.style.animationDuration = `${Math.random() * 3 + 3}s`; // Random animation duration
+                body.appendChild(particle);
+            }
+        }
+
         function likePost(id) {
             const likedPosts = JSON.parse(localStorage.getItem('likedPosts')) || [];
             let likeCount = document.getElementById(`like-count-${id}`);
@@ -58,7 +99,7 @@
         function getRandomName() {
             const names = [
                 "Guest1", "Guest2", "Guest3", "Guest4", "Guest5",
-                "Anonymous", "User   123", "Visitor", "Explorer", "Adventurer"
+                "Anonymous", "User    123", "Visitor", "Explorer", "Adventurer"
             ];
             return names[Math.floor(Math.random() * names.length)];
         }
@@ -98,7 +139,8 @@
                         <p class="text-gray-300">${post.content}</p>
                         <img src="${post.imageUrl}" alt="Post image" class="mt-2 rounded-lg" />
                         <button id="like-button-${post.id}" onclick="likePost(${post.id})" class="mt-2 ${isLiked ? 'text-blue-400' : 'text-gray-400'}">❤️ Like</button>
- <span id="like-count-${post.id}" class="ml-2">${isLiked ? 1 : 0}</span>
+                        <span id="like-count-${post.id}" class="ml-2">${isLiked ? 1 : 0}</span>
+                        <!-- Remove Edit and Delete buttons for guest posts -->
                     </div>
                 `;
             });
@@ -151,6 +193,7 @@
         }
 
         window.onload = function() {
+            createParticles(); // Create floating particles
             initializePosts();
             loadPosts(); // Load posts on page load
         };

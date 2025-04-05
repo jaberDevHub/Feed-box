@@ -6,23 +6,20 @@
     <title>Feed</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
-        /* Smooth scrolling for the feed */
         html {
             scroll-behavior: smooth;
         }
-        /* Custom styles for post hover effects */
         .post {
             transition: transform 0.2s, box-shadow 0.2s;
         }
         .post:hover {
-            transform: scale(1.05);
-            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5);
+            transform: scale(1.02);
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
         }
-        /* Background particles */
         body {
-            overflow: hidden;
+            overflow-x: hidden;
             position: relative;
-            background: #1a202c; /* Dark background */
+            background: #1a202c;
         }
         .particle {
             position: absolute;
@@ -35,28 +32,107 @@
             50% { transform: translateY(-20px); }
             100% { transform: translateY(0); }
         }
-        /* Feed container */
         #feed-container {
-            max-height: 60vh; /* Set a max height for scrolling */
-            overflow-y: auto; /* Enable vertical scrolling */
+            max-height: 60vh;
+            overflow-y: auto;
+        }
+        .post-image {
+            max-height: 300px;
+            object-fit: cover;
+            width: 100%;
+        }
+        .your-post {
+            border-left: 4px solid #3b82f6;
         }
     </style>
+</head>
+<body class="bg-gray-900 text-white flex justify-center items-center min-h-screen">
+    <div class="w-full md:w-1/2 max-w-lg bg-gray-800 rounded-lg shadow-lg overflow-hidden mx-4">
+        <!-- Navbar -->
+        <nav class="w-full bg-gray-700 p-4 text-center text-xl font-bold flex justify-between items-center">
+            <span id="feed-title">Feed</span>
+            <button id="my-posts-btn" class="text-sm bg-blue-600 hover:bg-blue-700 px-3 py-1 rounded">
+                My Posts
+            </button>
+        </nav>
+
+        <!-- Guest Post Form -->
+        <div class="p-4 flex items-center justify-between">
+            <div class="w-full">
+                <h2 class="text-lg font-semibold">Post as Guest</h2>
+                <textarea id="post-content" class="w-full p-2 mt-2 bg-gray-700 rounded" placeholder="What's on your mind?" rows="3"></textarea>
+                <input id="post-image-url" type="text" class="w-full p-2 mt-2 bg-gray-700 rounded" placeholder="Image URL (optional)" />
+                <button onclick="handleGuestPost()" class="mt-2 w-full bg-blue-600 hover:bg-blue-700 p-2 rounded transition-colors">
+                    Post as Guest
+                </button>
+            </div>
+            <button onclick="refreshPosts()" class="ml-2 p-2 bg-gray-600 rounded hover:bg-gray-500" title="Refresh feed">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                    <path fill-rule="evenodd" d="M4 2a1 1 0 011 1v2.101a7.002 7.002 0 0111.601 2.566 1 1 0 11-1.885.666A5.002 5.002 0 005.999 7H9a1 1 0 010 2H4a1 1 0 01-1-1V3a1 1 0 011-1zm.008 9.057a1 1 0 011.276.61A5.002 5.002 0 0014.001 13H11a1 1 0 110-2h5a1 1 0 011 1v5a1 1 0 11-2 0v-2.101a7.002 7.002 0 01-11.601-2.566 1 1 0 01.61-1.276z" clip-rule="evenodd" />
+                </svg>
+            </button>
+        </div>
+
+        <!-- Loading Indicator -->
+        <div id="loading" class="hidden text-center py-4">
+            <div class="inline-block animate-spin rounded-full h-8 w-8 border-4 border-blue-500 border-t-transparent"></div>
+        </div>
+
+        <!-- Feed Container -->
+        <div id="feed-container" class="p-4"></div>
+    </div>
+
     <script>
+        // Track current user session (using localStorage so it persists)
+        let currentUser = localStorage.getItem('user_id') || `user_${Math.random().toString(36).substring(2, 9)}`;
+        localStorage.setItem('user_id', currentUser);
+        let viewingMyPosts = false;
+
+        // Utility functions
+        function escapeHtml(unsafe) {
+            return unsafe
+                .replace(/&/g, "&amp;")
+                .replace(/</g, "&lt;")
+                .replace(/>/g, "&gt;")
+                .replace(/"/g, "&quot;")
+                .replace(/'/g, "&#039;");
+        }
+
+        function isValidUrl(url) {
+            if (!url) return true;
+            try {
+                new URL(url);
+                return true;
+            } catch {
+                return false;
+            }
+        }
+
+        // Fisher-Yates shuffle algorithm
+        function shuffleArray(array) {
+            const newArray = [...array];
+            for (let i = newArray.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [newArray[i], newArray[j]] = [newArray[j], newArray[i]];
+            }
+            return newArray;
+        }
+
         // Function to create floating particles
         function createParticles() {
-            const numParticles = 30; // Number of particles
+            const numParticles = 30;
             const body = document.body;
 
             for (let i = 0; i < numParticles; i++) {
                 const particle = document.createElement('div');
                 particle.className = 'particle';
-                const size = Math.random() * 10 + 5; // Random size between 5 and 15
+                const size = Math.random() * 10 + 5;
                 particle.style.width = `${size}px`;
                 particle.style.height = `${size}px`;
-                particle.style.left = `${Math.random() * 100}vw`; // Random horizontal position
-                particle.style.top = `${Math.random() * 100}vh`; // Random vertical position
-                particle.style.opacity = Math.random(); // Random opacity
-                particle.style.animationDuration = `${Math.random() * 3 + 3}s`; // Random animation duration
+                particle.style.left = `${Math.random() * 100}vw`;
+                particle.style.top = `${Math.random() * 100}vh`;
+                particle.style.opacity = Math.random();
+                particle.style.animationDuration = `${Math.random() * 3 + 3}s`;
                 body.appendChild(particle);
             }
         }
@@ -68,13 +144,11 @@
             const likeButton = document.getElementById(`like-button-${id}`);
 
             if (likedPosts.includes(id)) {
-                // If already liked, remove the like
                 likedPosts.splice(likedPosts.indexOf(id), 1);
                 likeCount.innerText = currentLikes - 1;
                 likeButton.classList.remove('text-blue-400');
                 likeButton.classList.add('text-gray-400');
             } else {
-                // If not liked, add the like
                 likedPosts.push(id);
                 likeCount.innerText = currentLikes + 1;
                 likeButton.classList.add('text-blue-400');
@@ -96,130 +170,154 @@
             return styles[Math.floor(Math.random() * styles.length)];
         }
 
-        function getRandomName() {
-            const names = [
-                "Guest1", "Guest2", "Guest3", "Guest4", "Guest5",
-                "Anonymous", "User    123", "Visitor", "Explorer", "Adventurer"
-            ];
-            return names[Math.floor(Math.random() * names.length)];
-        }
-
         function savePost(content, imageUrl) {
             const posts = JSON.parse(localStorage.getItem('posts')) || [];
             const newPost = {
-                id: posts.length + 1,
-                name: getRandomName(),
+                id: Date.now(),
+                userId: currentUser,
+                name: "Guest", // All posts show as "Guest" to others
                 content: content,
                 imageUrl: imageUrl,
-                timestamp: new Date().getTime() // Store the current timestamp
+                timestamp: new Date().getTime()
             };
 
-            // Check if the post already exists
             const exists = posts.some(post => post.content === newPost.content && post.imageUrl === newPost.imageUrl);
             if (!exists) {
-                // Add the new post to the beginning of the array
                 posts.unshift(newPost);
                 localStorage.setItem('posts', JSON.stringify(posts));
-                loadPosts();
+                loadPosts(viewingMyPosts);
             } else {
                 alert("This post already exists!");
             }
         }
 
-        function loadPosts() {
-            const posts = JSON.parse(localStorage.getItem('posts')) || [];
-            const likedPosts = JSON.parse(localStorage.getItem('likedPosts')) || [];
-            const feedContainer = document.getElementById('feed-container');
-            feedContainer.innerHTML = ''; // Clear existing posts
+        function loadPosts(showOnlyMyPosts = false) {
+            const loading = document.getElementById('loading');
+            loading.classList.remove('hidden');
+            
+            setTimeout(() => {
+                const posts = JSON.parse(localStorage.getItem('posts')) || [];
+                const likedPosts = JSON.parse(localStorage.getItem('likedPosts')) || [];
+                const feedContainer = document.getElementById('feed-container');
+                const feedTitle = document.getElementById('feed-title');
+                const myPostsBtn = document.getElementById('my-posts-btn');
+                
+                feedContainer.innerHTML = '';
+                
+                let displayPosts = [...posts];
+                
+                if (showOnlyMyPosts) {
+                    displayPosts = displayPosts.filter(post => post.userId === currentUser);
+                    feedTitle.textContent = "My Posts";
+                    myPostsBtn.textContent = "Back to Feed";
+                    myPostsBtn.classList.remove('bg-blue-600');
+                    myPostsBtn.classList.add('bg-gray-600');
+                } else {
+                    feedTitle.textContent = "Feed";
+                    myPostsBtn.textContent = "My Posts";
+                    myPostsBtn.classList.add('bg-blue-600');
+                    myPostsBtn.classList.remove('bg-gray-600');
+                }
+                
+                displayPosts.sort((a, b) => b.timestamp - a.timestamp).forEach(post => {
+                    const postElement = document.createElement('div');
+                    const isMyPost = post.userId === currentUser;
+                    postElement.className = `mb-4 p-4 ${getRandomStyle()} rounded-lg shadow post ${isMyPost ? 'your-post' : ''}`;
+                    
+                    const escapedContent = escapeHtml(post.content);
+                    const displayName = isMyPost ? "You" : escapeHtml(post.name);
+                    const escapedImageUrl = escapeHtml(post.imageUrl);
+                    
+                    postElement.innerHTML = `
+                        <div class="flex justify-between items-start">
+                            <h2 class="font-semibold">${displayName}</h2>
+                            <small class="text-gray-300">${new Date(post.timestamp).toLocaleString()}</small>
+                        </div>
+                        <p class="text-gray-300 my-2">${escapedContent}</p>
+                        ${escapedImageUrl ? `<img src="${escapedImageUrl}" alt="Post image" class="post-image mt-2 rounded-lg" onerror="this.src='https://via.placeholder.com/300'" />` : ''}
+                        <div class="mt-3 flex items-center">
+                            <button id="like-button-${post.id}" class="${likedPosts.includes(post.id) ? 'text-blue-400' : 'text-gray-400'} hover:text-blue-300 transition-colors">
+                                ❤️ Like
+                            </button>
+                            <span id="like-count-${post.id}" class="ml-2">${likedPosts.includes(post.id) ? 1 : 0}</span>
+                        </div>
+                    `;
+                    
+                    postElement.querySelector(`#like-button-${post.id}`).addEventListener('click', () => likePost(post.id));
+                    feedContainer.appendChild(postElement);
+                });
+                
+                loading.classList.add('hidden');
+            }, 500);
+        }
 
-            // Sort posts by timestamp (latest first)
-            posts.sort((a, b) => b.timestamp - a.timestamp);
-
-            posts.forEach(post => {
-                const uniqueStyle = getRandomStyle();
-                const isLiked = likedPosts.includes(post.id);
-                feedContainer.innerHTML += `
-                    <div class="mb-4 p-4 ${uniqueStyle} rounded-lg shadow post">
-                        <h2 class="font-semibold">${post.name}</h2>
-                        <p class="text-gray-300">${post.content}</p>
-                        <img src="${post.imageUrl}" alt="Post image" class="mt-2 rounded-lg" />
-                        <button id="like-button-${post.id}" onclick="likePost (${post.id})" class="mt-2 ${isLiked ? 'text-blue-400' : 'text-gray-400'}">❤️ Like</button>
-                        <span id="like-count-${post.id}" class="ml-2">${isLiked ? 1 : 0}</span>
-                        <!-- Remove Edit and Delete buttons for guest posts -->
-                    </div>
-                `;
-            });
+        function toggleMyPosts() {
+            viewingMyPosts = !viewingMyPosts;
+            loadPosts(viewingMyPosts);
         }
 
         function handleGuestPost() {
-            const content = document.getElementById('post-content').value;
-            const imageUrl = document.getElementById('post-image-url').value || "https://via.placeholder.com/300"; // Default image if none provided
-            if (content) {
-                savePost(content, imageUrl);
-                document.getElementById('post-content').value = ''; // Clear input
-                document.getElementById('post-image-url').value = ''; // Clear image URL input
-            } else {
+            const content = document.getElementById('post-content').value.trim();
+            let imageUrl = document.getElementById('post-image-url').value.trim();
+            
+            if (!content) {
                 alert("Please enter some content for your post.");
+                return;
             }
+
+            if (imageUrl && !isValidUrl(imageUrl)) {
+                alert("Please enter a valid image URL or leave it empty.");
+                return;
+            }
+
+            imageUrl = imageUrl || "https://via.placeholder.com/300";
+            savePost(content, imageUrl);
+            
+            // Clear inputs
+            document.getElementById('post-content').value = '';
+            document.getElementById('post-image-url').value = '';
         }
 
         function initializePosts() {
             const initialPosts = [
-                { name: "Alice", content: "Just had a great lunch!", imageUrl: "https://via.placeholder.com/300" },
-                { name: "Bob", content: "Loving the new features!", imageUrl: "https://via.placeholder.com/300" },
-                { name: "Charlie", content: "Can't wait for the weekend!", imageUrl: "https://via.placeholder.com/300" },
-                { name: "Diana", content: "This platform is amazing!", imageUrl: "https://via.placeholder.com/300" },
-                { name: "Ethan", content: "Just finished a great book!", imageUrl: "https://via.placeholder.com/300" },
-                { name: "Fiona", content: "Exploring new places!", imageUrl: "https://via.placeholder.com/300" },
-                { name: "George", content: "Had a productive day at work!", imageUrl: "https://via.placeholder.com/300" },
-                { name: "Hannah", content: "Enjoying the beautiful weather!", imageUrl: "https://via.placeholder.com/300" },
-                { name: "Ian", content: "Just got back from a trip!", imageUrl: "https://via.placeholder.com/300" },
-                { name: "Julia", content: "Excited for the upcoming event!", imageUrl: "https://via.placeholder.com/300" },
-                { name: "Kevin", content: "Trying out a new recipe!", imageUrl: "https://via.placeholder.com/300" },
-                { name: "Laura", content: "Just finished a workout!", imageUrl: "https://via.placeholder.com/300" },
-                { name: "Mike", content: "Looking forward to the holidays!", imageUrl: "https://via.placeholder.com/300" },
-                { name: "Nina", content: "Just adopted a puppy!", imageUrl: "https://via.placeholder.com/300" },
-                { name: "Oscar", content: "Working on a new project!", imageUrl: "https://via.placeholder.com/300" }
+                { userId: "system", name: "Alice", content: "Just had a great lunch!", imageUrl: "https://images.unsplash.com/photo-1504674900247-0877df9cc836?w=500" },
+                { userId: "system", name: "Bob", content: "Loving the new features!", imageUrl: "https://images.unsplash.com/photo-1546069901-ba9599a7e63c?w=500" },
+                { userId: "system", name: "Charlie", content: "Can't wait for the weekend!", imageUrl: "" },
+                { userId: "system", name: "Diana", content: "This platform is amazing!", imageUrl: "https://images.unsplash.com/photo-1565299624946-b28f40a0ae38?w=500" },
+                { userId: "system", name: "Ethan", content: "Just finished a great book!", imageUrl: "" },
+                { userId: "system", name: "Fiona", content: "Exploring new places!", imageUrl: "https://images.unsplash.com/photo-1506929562872-bb421503ef21?w=500" }
             ];
+            
             const posts = JSON.parse(localStorage.getItem('posts')) || [];
-            initialPosts.forEach(post => {
-                // Check if the post already exists
-                const exists = posts.some(existingPost => existingPost.content === post.content && existingPost.imageUrl === post.imageUrl);
-                if (!exists) {
+            
+            // Only add initial posts if none exist
+            if (posts.length === 0) {
+                initialPosts.forEach(post => {
                     posts.push({
-                        id: posts.length + 1,
+                        id: Date.now(),
+                        userId: post.userId,
                         name: post.name,
                         content: post.content,
                         imageUrl: post.imageUrl,
-                        timestamp: new Date().getTime() // Store the current timestamp
+                        timestamp: new Date().getTime()
                     });
-                }
-            });
-            localStorage.setItem('posts', JSON.stringify(posts));
+                });
+                localStorage.setItem('posts', JSON.stringify(posts));
+            }
+        }
+
+        function refreshPosts() {
+            loadPosts(viewingMyPosts);
         }
 
         window.onload = function() {
-            createParticles(); // Create floating particles
+            createParticles();
             initializePosts();
-            loadPosts(); // Load posts on page load
+            loadPosts();
+            
+            // Add event listener for My Posts button
+            document.getElementById('my-posts-btn').addEventListener('click', toggleMyPosts);
         };
     </script>
-</head>
-<body class="bg-gray-900 text-white flex justify-center items-center min-h-screen">
-    <div class="w-1/2 max-w-lg bg-gray-800 rounded-lg shadow-lg overflow-hidden ">
-        <!-- Navbar -->
-        <nav class="w-full bg-gray-700 p-4 text-center text-xl font-bold">Feed</nav>
-
-        <!-- Guest Post Form -->
-        <div class="p-4">
-            <h2 class="text-lg font-semibold">Post as Guest</h2>
-            <textarea id="post-content" class="w-full p-2 mt-2 bg-gray-700 rounded" placeholder="What's on your mind?" rows="3"></textarea>
-            <input id="post-image-url" type="text" class="w-full p-2 mt-2 bg-gray-700 rounded" placeholder="Image URL (optional)" />
-            <button onclick="handleGuestPost()" class="mt-2 w -full bg-blue-600 p-2 rounded">Post as Guest</button>
-        </div>
-
-        <!-- Feed Container -->
-        <div id="feed-container" class="p-4"></div>
-    </div>
 </body>
 </html>
